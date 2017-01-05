@@ -1,29 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-import _init_path
 import codecs
 import os.path
 import re
-import sys
 import subprocess
-
-from functools import partial
+import sys
 from collections import defaultdict
+from functools import partial
 
-from PyQt4.QtGui import *
 from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 
-import resources
-
-from lib import struct, newAction, newIcon, addActions, fmtShortcut
-from shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from canvas import Canvas
-from zoomWidget import ZoomWidget
-from labelDialog import LabelDialog
 from colorDialog import ColorDialog
+from labelDialog import LabelDialog
 from labelFile import LabelFile, LabelFileError
-from toolBar import ToolBar
+from lib import struct, newAction, newIcon, addActions, fmtShortcut
 from pascal_voc_io import PascalVocReader
+from shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
+from toolBar import ToolBar
+from zoomWidget import ZoomWidget
+import cv2
 
 __appname__ = 'labelImg'
 
