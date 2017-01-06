@@ -387,6 +387,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoomWidget.valueChanged.connect(self.paintCanvas)
 
         self.populateModeActions()
+        self.cap = None
 
     ## Support Functions ##
 
@@ -734,12 +735,16 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.fillColor = QColor(*self.labelFile.fillColor)
             elif filename.endswith('mp4') or filename.endswith('avi') or filename.endswith('mov'):
                 self.labelFile = None
-                cap = cv2.VideoCapture(filename)
-                _ , self.imageData = cap.read()
+                if self.cap == None:
+                    self.cap = cv2.VideoCapture(filename)
+                    _ , self.imageData = self.cap.read()
+                else:
+                    _, self.imageData = self.cap.read()
             else:
                 # Load image:
                 # read data first and store for saving into label file.
                 #self.imageData = read(filename, None)
+                self.cap = None
                 self.labelFile = None
                 self.imageData = cv2.imread(filename)
             image = numpy2Qimage(self.imageData)
@@ -928,6 +933,8 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.autoSaving is True and self.defaultSaveDir is not None:
             if self.dirty is True and self.hasLabels():
                 self.saveFile()
+        if self.cap != None:
+            return self.loadFile(self.filename)
 
         if not self.mayContinue():
             return
@@ -1137,6 +1144,7 @@ class Settings(object):
 def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])
 
+
 def read(filename, default=None):
     # type: (object, object) -> object
     """
@@ -1148,6 +1156,7 @@ def read(filename, default=None):
             return f.read()
     except:
         return default
+
 
 def main(argv):
     """Standard boilerplate Qt application code."""
