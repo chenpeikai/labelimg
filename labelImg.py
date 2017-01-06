@@ -1,30 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+import _init_path
 import codecs
 import os.path
 import re
-import subprocess
 import sys
-from collections import defaultdict
+import subprocess
+
 from functools import partial
+from collections import defaultdict
 
-from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from PyQt4.QtCore import *
 
-from canvas import Canvas
-from colorDialog import ColorDialog
-from labelDialog import LabelDialog
-from labelFile import LabelFile, LabelFileError
+import resources
+
 from lib import struct, newAction, newIcon, addActions, fmtShortcut
-from pascal_voc_io import PascalVocReader
 from shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
-from toolBar import ToolBar
+from canvas import Canvas
 from zoomWidget import ZoomWidget
+from labelDialog import LabelDialog
+from colorDialog import ColorDialog
+from labelFile import LabelFile, LabelFileError
+from toolBar import ToolBar
+from pascal_voc_io import PascalVocReader
 import cv2
+import numpy
 
 __appname__ = 'labelImg'
 
 ### Utility functions and classes.
+
+def numpy2Qimage(Mat):
+
+    if Mat != None:
+        # Notice the dimensions.
+        height, width, bytesPerComponent = Mat.shape
+        bytesPerLine = bytesPerComponent * width;
+
+#        cv2.imshow("Show Image with Opencv", Mat)
+
+        # Convert to RGB for QImage.
+        cv2.cvtColor(Mat, cv2.cv.CV_BGR2RGB, Mat)
+
+        image = QImage(Mat.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        return image
 
 class WindowMixin(object):
     def menu(self, title, actions=None):
@@ -154,7 +176,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         openAnnotation = action('&Open Annotation', self.openAnnotation,
                 'Ctrl+q', 'openAnnotation', u'Open Annotation')
-
+        #TODO :分析程序,将读图片改为读视频
         openNextImg = action('&Next Image', self.openNextImg,
                 'n', 'next', u'Open Next')
 
@@ -678,7 +700,11 @@ class MainWindow(QMainWindow, WindowMixin):
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def loadFile(self, filename=None):
-        """Load the specified file, or the last opened file if None."""
+        # type: (object) -> object
+        # type: (object) -> object
+        """Load the specified file, or the last opened file if None.
+        :rtype: object
+        """
         self.resetState()
         self.canvas.setEnabled(False)
         if filename is None:
@@ -706,12 +732,17 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.imageData = self.labelFile.imageData
                 self.lineColor = QColor(*self.labelFile.lineColor)
                 self.fillColor = QColor(*self.labelFile.fillColor)
+            elif filename.endswith('mp4') or filename.endswith('avi') or filename.endswith('mov'):
+                self.labelFile = None
+                cap = cv2.VideoCapture(filename)
+                _ , self.imageData = cap.read()
             else:
                 # Load image:
                 # read data first and store for saving into label file.
-                self.imageData = read(filename, None)
+                #self.imageData = read(filename, None)
                 self.labelFile = None
-            image = QImage.fromData(self.imageData)
+                self.imageData = cv2.imread(filename)
+            image = numpy2Qimage(self.imageData)
             if image.isNull():
                 self.errorMessage(u'Error opening file',
                         u"<p>Make sure <i>%s</i> is a valid image file." % filename)
@@ -918,12 +949,13 @@ class MainWindow(QMainWindow, WindowMixin):
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
+
         path = os.path.dirname(unicode(self.filename))\
                 if self.filename else '.'
         formats = ['*.%s' % unicode(fmt).lower()\
                 for fmt in QImageReader.supportedImageFormats()]
         filters = "Image & Label files (%s)" % \
-                ' '.join(formats + ['*%s' % LabelFile.suffix])
+                ' '.join(formats + ['*%s' % LabelFile.suffix] + ['*.avi', '*.mp4'])
         filename = unicode(QFileDialog.getOpenFileName(self,
             '%s - Choose Image or Label file' % __appname__, path, filters))
         if filename:
@@ -1106,6 +1138,11 @@ def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])
 
 def read(filename, default=None):
+    # type: (object, object) -> object
+    """
+
+    :rtype: object
+    """
     try:
         with open(filename, 'rb') as f:
             return f.read()

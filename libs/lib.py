@@ -52,6 +52,11 @@ def labelValidator():
 
 class struct(object):
     def __init__(self, **kwargs):
+        # type: (object) -> object
+        """
+
+        :rtype: object
+        """
         self.__dict__.update(kwargs)
 
 def distance(p):
