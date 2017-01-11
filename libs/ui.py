@@ -21,7 +21,7 @@ from toolBar import ToolBar
 from pascal_voc_io import PascalVocReader
 import cv2
 import numpy
-
+from track import Meanshife
 __appname__ = 'labelImg'
 
 ### Utility functions and classes.
@@ -803,12 +803,13 @@ class MainWindow(QMainWindow, WindowMixin):
                                 + (str(self._num - 1) if self._num > 0 else str(self._num))\
                                 + '.xml'
                     xmlPath = os.path.join(self.defaultSaveDir, basename)
-                    self.loadPascalXMLByFilename(xmlPath)
+                    self.loadPascalXMLByFilename(xmlPath, True)
+
             if self.usingPascalVocFormat is True and \
                     self.defaultSaveDir is not None:
                     basename = os.path.basename(os.path.splitext(self.filename)[0]) + '.xml'
                     xmlPath = os.path.join(self.defaultSaveDir, basename)
-                    self.loadPascalXMLByFilename(xmlPath)
+                    self.loadPascalXMLByFilename(xmlPath,)
 
             return True
         return False
@@ -1148,12 +1149,25 @@ class MainWindow(QMainWindow, WindowMixin):
                     else:
                         self.labelHist.append(line)
 
-    def loadPascalXMLByFilename(self, xmlPath):
+    def loadPascalXMLByFilename(self, xmlpath, istrack=False):
         if self.filename is None:
             return
-        if os.path.isfile(xmlPath) is False:
+        if os.path.isfile(xmlpath) is False:
             return
-
-        tVocParseReader = PascalVocReader(xmlPath)
+        tVocParseReader = PascalVocReader(xmlpath)
         shapes = tVocParseReader.getShapes()
-        self.loadLabels(shapes)
+        if istrack is True:
+            track_res = []
+            for shape in shapes:
+                point1, _, point2, _ = shape[1]
+                width = point2[0] - point1[0]
+                height = point2[1] - point1[1]
+                rect = (point1[0], point1[1], width, height)
+                tracker = Meanshife(rect, self.imageData)
+                out_rect = tracker.track(self.imageData)
+                x, y, w, h = out_rect
+                temp_shape = (shape[0], [(x, y), (x+w, y), (x+w, y+h), (x, y+h)], shape[2], shape[3])
+                track_res.append(temp_shape)
+                self.loadLabels(track_res)
+        else:
+            self.loadLabels(shapes)

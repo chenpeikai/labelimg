@@ -17,7 +17,6 @@ class Meanshife:
     def track(self, frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         dst = cv2.calcBackProject([hsv], [0], self._roi_hist, [0, 180], 1)
-        cv2.imshow('pro', dst)
         _, self._rect = cv2.meanShift(dst, self._rect, self._term_crit)
         return self._rect
 
