@@ -54,7 +54,7 @@ class Settings(object):
 
 def numpy2Qimage(Mat):
 
-    if Mat != None:
+    if Mat is not None:
         # Notice the dimensions.
         height, width, bytesPerComponent = Mat.shape
         bytesPerLine = bytesPerComponent * width;
@@ -110,8 +110,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.autoSaving = True
         self._noSelectionSlot = False
         self._beginner = True
-        self.screencastViewer = "firefox"
-        self.screencast = "https://youtu.be/p0nR2YsCY_U"
+#        self.screencastViewer = "firefox"
+#        self.screencast = "https://youtu.be/p0nR2YsCY_U"
 
         self.loadPredefinedClasses()
         # Main widgets and related state.
@@ -303,7 +303,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                 fitWindow=fitWindow, fitWidth=fitWidth,
                 zoomActions=zoomActions,
-                fileMenuActions=(open,opendir,save,saveAs,close,quit),
+                fileMenuActions=(open, opendir, save, saveAs, close, quit),
                 beginner=(), advanced=(),
                 editMenu=(edit, copy, delete, None, color1, color2),
                 beginnerContext=(create, edit, copy, delete),
@@ -337,7 +337,7 @@ class MainWindow(QMainWindow, WindowMixin):
             action('&Copy here', self.copyShape),
             action('&Move here', self.moveShape)))
 
-        self.tools = self.toolbar('Tools')
+        self.tools = self.toolbar('Tool')
         self.actions.beginner = (
             open, opendir, openNextImg, openPrevImg, save, None, create, copy, delete, None,
             zoomIn, zoom, zoomOut, fitWindow, fitWidth)
@@ -408,6 +408,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.populateModeActions()
         self.cap = None
+        self._num = 0
 
     ## Support Functions ##
 
@@ -756,10 +757,13 @@ class MainWindow(QMainWindow, WindowMixin):
             elif filename.endswith('mp4') or filename.endswith('avi') or filename.endswith('mov'):
                 self.labelFile = None
                 if self.cap == None:
+                    self._num = 0
                     self.cap = cv2.VideoCapture(filename)
-                    _ , self.imageData = self.cap.read()
-                else:
                     _, self.imageData = self.cap.read()
+                else:
+                    ret, self.imageData = self.cap.read()
+                    if ret:
+                        self._num += 1
             else:
                 # Load image:
                 # read data first and store for saving into label file.
@@ -787,6 +791,19 @@ class MainWindow(QMainWindow, WindowMixin):
             self.toggleActions(True)
 
             ## Label xml file and show bound box according to its filename
+            if self.cap is not None and self.defaultSaveDir is not None:
+                filename = self.filename
+                index_str = str(self._num)
+                basename = os.path.basename(os.path.splitext(filename)[0]) + index_str + '.xml'
+                xmlPath = os.path.join(self.defaultSaveDir, basename)
+                if QFile.exists(xmlPath):
+                    self.loadPascalXMLByFilename(xmlPath)
+                else:
+                    basename = os.path.basename(os.path.splitext(filename)[0])\
+                                + (str(self._num - 1) if self._num > 0 else str(self._num))\
+                                + '.xml'
+                    xmlPath = os.path.join(self.defaultSaveDir, basename)
+                    self.loadPascalXMLByFilename(xmlPath)
             if self.usingPascalVocFormat is True and \
                     self.defaultSaveDir is not None:
                     basename = os.path.basename(os.path.splitext(self.filename)[0]) + '.xml'
@@ -950,6 +967,8 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def openNextImg(self, _value=False):
         # Proceding next image without dialog if having any label
+        if self.cap is not None:
+            self.dirty = True
         if self.autoSaving is True and self.defaultSaveDir is not None:
             if self.dirty is True and self.hasLabels():
                 self.saveFile()
@@ -997,7 +1016,8 @@ class MainWindow(QMainWindow, WindowMixin):
             if self.defaultSaveDir is not None and len(str(self.defaultSaveDir)):
                 print 'handle the image:' + self.filename
                 imgFileName = os.path.basename(self.filename)
-                savedFileName = os.path.splitext(imgFileName)[0] + LabelFile.suffix
+                savedFileName = os.path.splitext(imgFileName)[0] + (str(self._num) if self.cap is not None else '')
+                savedFileName = savedFileName + LabelFile.suffix
                 savedPath = os.path.join(str(self.defaultSaveDir), savedFileName)
                 self._saveFile(savedPath)
             else:
